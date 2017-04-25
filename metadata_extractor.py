@@ -2,7 +2,6 @@
 import pysrt
 import nltk
 import json
-import geotext
 import sys
 from nltk.tag.stanford import StanfordNERTagger
 from config import *
