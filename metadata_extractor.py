@@ -13,12 +13,8 @@ class TextModel(object):
         self.subs = pysrt.open(self.source_file)
         self.parsed_subs = self.parse_subs().encode("ascii", "ignore")
         self.tagged_text = nltk.pos_tag(nltk.word_tokenize(self.parsed_subs))
-        #self.nouns = self.get_words_in_class("NN")
-        #self.verbs = self.get_words_in_class("VB")
-        #self.sentences = self.get_sentences(self.parsed_subs)
-        #self.geotext_object = geotext.GeoText(self.parsed_subs)
-        #self.cities = self.geotext_object.cities
-        #self.countries = self.geotext_object.country_mentions
+        self.unique_words = self.get_word_class_lexicon()
+        self.sentences = self.get_sentences(self.parsed_subs)
         self.enteties = self.extract_entities()
         if save:
             self.save_self()
@@ -29,18 +25,17 @@ class TextModel(object):
             completeText += i.text + " "
         return completeText
 
-    def get_words_in_class(self, word_class):
-        words = {}
+    def get_word_class_lexicon(self):
+        lexicon = {}
         for i in range(len(self.tagged_text)):
-            self.add_to_dictionary(self.tagged_text[i], word_class, words)
-        return words
-
-    def add_to_dictionary_old(self, word, word_class, dictionary):
-        if word[1] == word_class:
-            if word[0] in dictionary:
-                dictionary[word[0]] += 1
-            else:
-                dictionary[word[0]] = 1
+            self.add_key(self.tagged_text[i][1], lexicon)
+            self.add_to_dictionary(self.tagged_text[i][0], lexicon[self.tagged_text[i][1]])
+        return lexicon
+    def add_key(self, key, dictionary):
+        if key in dictionary:
+            return None
+        else:
+            dictionary[key] = {}
 
     def add_to_dictionary(self, word, dictionary):
         if word in dictionary:
@@ -51,7 +46,7 @@ class TextModel(object):
     def save_self(self):
         print self.source_file.split(".")
         file = open(self.source_file.split(".")[0] + ".json", "w")
-        json.dump([self.enteties], file, sort_keys=True, indent=4)
+        json.dump([self.enteties, self.unique_words], file, sort_keys=True, indent=4)
 
     def get_sentences(self, text):
         sentences = nltk.sent_tokenize(text)
@@ -81,5 +76,5 @@ class TextModel(object):
                     self.add_to_dictionary(tagged_text[i][0], enteties[tagged_text[i][1] + "S"])
         return enteties
 
-
-model = TextModel(sys.argv[1], True)
+for i in sys.argv[1:]:
+    TextModel(i, True)
