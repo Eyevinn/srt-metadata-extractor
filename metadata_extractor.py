@@ -7,12 +7,12 @@ from nltk.tag.stanford import StanfordNERTagger
 from config import *
 
 class TextModel(object):
-    def __init__(self, source_file, save = True):
+    def __init__(self, source_file, save):
         self.tagger = StanfordNERTagger(NER_path[0], NER_path[1])
         self.source_file = source_file
         self.subs = pysrt.open(self.source_file)
         self.parsed_subs = self.parse_subs().encode("ascii", "ignore")
-        #self.tagged_text = nltk.pos_tag(nltk.word_tokenize(self.parsed_subs))
+        self.tagged_text = nltk.pos_tag(nltk.word_tokenize(self.parsed_subs))
         #self.nouns = self.get_words_in_class("NN")
         #self.verbs = self.get_words_in_class("VB")
         #self.sentences = self.get_sentences(self.parsed_subs)
@@ -59,31 +59,27 @@ class TextModel(object):
         sentences = [nltk.pos_tag(sent) for sent in sentences]
         return sentences
 
+    def check_if_next_is_same(self, word_collection, index, entity_type):
+        if word_collection[index + 1][1] == entity_type:
+            return True
+        else:
+            return False
+
     def extract_entities(self):
         enteties = {"PERSONS": {}, "LOCATIONS": {}, "ORGANIZATIONS": {}}
         tagged_text = self.tagger.tag(nltk.word_tokenize(self.parsed_subs))
+        prev = False
         for i in range(len(tagged_text)):
-            if tagged_text[i][1] == "PERSON":
-                if tagged_text[i + 1][1] == "PERSON":
-                    if tagged_text[i + 2][1] == "PERSON":
-                        self.add_to_dictionary(tagged_text[i][0] + " " + tagged_text[i+1][0] + " " + tagged_text[i+2][0], enteties["PERSONS"])
+            #TODO find a way to recursivly test all lenghts of names, regardless of how many
+            if tagged_text[i][1] in ["PERSON", "LOCATION", "ORGANIZATION"]:
+                if self.check_if_next_is_same(tagged_text, i, tagged_text[i][1]):
+                    if self.check_if_next_is_same(tagged_text, i + 1, tagged_text[i +1][1]):
+                        self.add_to_dictionary(tagged_text[i][0] + " " + tagged_text[i+1][0] + " " + tagged_text[i+2][0], enteties[tagged_text[i+1][1] + "S"])
                     else:
-                        self.add_to_dictionary(tagged_text[i][0] + " " + tagged_text[i+1][0], enteties["PERSONS"])
+                        self.add_to_dictionary(tagged_text[i][0] + " " + tagged_text[i+1][0], enteties[tagged_text[i+1][1] + "S"])
                 else:
-                    self.add_to_dictionary(tagged_text[i][0], enteties["PERSONS"])
-            if tagged_text[i][1] == "LOCATION":
-                if tagged_text[i + 1][1] == "LOCATION":
-                    self.add_to_dictionary(tagged_text[i][0] + " " + tagged_text[i+1][0], enteties["LOCATIONS"])
-                else:
-                    self.add_to_dictionary(tagged_text[i][0], enteties["LOCATIONS"])
-            if tagged_text[i][1] == "ORGANIZATION":
-                if tagged_text[i + 1][1] == "ORGANIZATION":
-                    self.add_to_dictionary(tagged_text[i][0] + " " + tagged_text[i+1][0], enteties["ORGANIZATIONS"])
-                else:
-                    self.add_to_dictionary(tagged_text[i][0], enteties["ORGANIZATIONS"])
-
-        print enteties
+                    self.add_to_dictionary(tagged_text[i][0], enteties[tagged_text[i][1] + "S"])
         return enteties
 
 
-model = TextModel(sys.argv[1])
+model = TextModel(sys.argv[1], True)
